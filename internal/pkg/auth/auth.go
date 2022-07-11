@@ -15,11 +15,9 @@ type UserClaims struct {
 }
 
 func GenerateToken(user models.User, secret string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, UserClaims{
-		UserID: user.ID,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour).Unix(),
-		},
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": user.ID,
+		"exp":     time.Now().Add(1 * time.Hour).Unix(),
 	})
 	tokenString, err := token.SignedString([]byte(secret))
 	if err != nil {
@@ -29,20 +27,20 @@ func GenerateToken(user models.User, secret string) (string, error) {
 }
 
 func ValidateToken(signedToken, secret string) (string, error) {
-	token, err := jwt.ParseWithClaims(signedToken, UserClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(signedToken, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secret), nil
 	})
 	if err != nil {
 		return "", err
 	}
-	claims, ok := token.Claims.(*UserClaims)
+	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return "", errors.New("couldn't parse claims")
 	}
-	if claims.ExpiresAt < time.Now().Local().Unix() {
+	if !token.Valid {
 		return "", errors.New("token expired")
 	}
-	return claims.UserID, nil
+	return claims["user_id"].(string), nil
 }
 
 func Authenticate(dbUser models.User, reqUser models.User) bool {

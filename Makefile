@@ -1,7 +1,7 @@
 DATABASE_NAME:=gophermart
 
 run:
-	go run cmd/gophermart/main.go
+	go run cmd/gophermart/main.go 
 
 t:
 	go test ./...
@@ -14,4 +14,4 @@ db-create:
 	psql -U postgres -c "create database $(DATABASE_NAME)"
 
 db-up:
-	goose -dir ./internal/pkg/database/migrations postgres "${DATABASE_DSN}" up
+	goose -dir ./internal/pkg/database/migrations postgres "${DATABASE_URI}" up

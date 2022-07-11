@@ -2,20 +2,23 @@ package config
 
 import (
 	"flag"
+	"log"
+
+	"github.com/caarlos0/env"
 )
 
 func init() {
-	flag.StringVar(&_run_address, "a", ":8080", "Server's host address")
-	flag.StringVar(&_accrual_address, "r", "", "External accrual address")
+	flag.StringVar(&_runAddress, "a", ":8080", "Server's host address")
+	flag.StringVar(&_accrualAddress, "r", "", "External accrual address")
 	flag.StringVar(&_databaseURI, "d", "", "Database URI")
 }
 
 const testTokenSignKey = "459116d7-fb7d-4789-8c2b-8f31dccb07cf"
 
 var (
-	_run_address     string
-	_accrual_address string
-	_databaseURI     string
+	_runAddress     string
+	_accrualAddress string
+	_databaseURI    string
 )
 
 type Config interface {
@@ -26,35 +29,47 @@ type Config interface {
 }
 
 type config struct {
-	runAddress           string `env:"RUN_ADDRESS"`
-	accrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
-	databaseURI          string `env:"DATABASE_URI"`
-	tokenSignKey         string
+	RunAddress           string `env:"RUN_ADDRESS"`
+	AccrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
+	DatabaseURI          string `env:"DATABASE_URI"`
+	TokenSignKey         string `env:"-"`
 }
 
 func InitConfig() Config {
 	flag.Parse()
-	conf := &config{
-		runAddress:           _run_address,
-		accrualSystemAddress: _accrual_address,
-		databaseURI:          _databaseURI,
-		tokenSignKey:         testTokenSignKey,
+	conf := &config{}
+	if err := env.Parse(conf); err != nil {
+		log.Fatalf("missing required env variables: %v", err)
 	}
+	conf.initWithFlags()
 	return conf
 }
 
 // Getters
 func (c *config) GetRunAddress() string {
-	return c.runAddress
+	return c.RunAddress
 }
 
 func (c *config) GetAccrualAddress() string {
-	return c.accrualSystemAddress
+	return c.AccrualSystemAddress
 }
 
 func (c *config) GetDatabaseURI() string {
-	return c.databaseURI
+	return c.DatabaseURI
 }
 func (c *config) GetTokenSignKey() string {
-	return c.tokenSignKey
+	return c.TokenSignKey
+}
+
+func (c *config) initWithFlags() {
+	if len(c.RunAddress) == 0 {
+		c.RunAddress = _runAddress
+	}
+	if len(c.AccrualSystemAddress) == 0 {
+		c.AccrualSystemAddress = _accrualAddress
+	}
+	if len(c.DatabaseURI) == 0 {
+		c.DatabaseURI = _databaseURI
+	}
+	c.TokenSignKey = testTokenSignKey
 }

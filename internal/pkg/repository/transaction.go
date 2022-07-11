@@ -7,8 +7,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func DoInTransaction(ctx context.Context, db sqlx.DB, f func(ctx context.Context, tx *sqlx.Tx) error) (err error) {
-	tx, err := db.BeginTxx(ctx, nil)
+func (r *martRepository) DoInTransaction(ctx context.Context, f func(ctx context.Context, tx *sqlx.Tx) error) (err error) {
+	tx, err := r.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("can't open transaction: %w", err)
 	}

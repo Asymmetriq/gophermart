@@ -14,18 +14,18 @@ CREATE TABLE IF NOT EXISTS balances (
 );
 
 DROP TYPE IF EXISTS status;
-CREATE TYPE status AS ENUM ('new', 'processing', 'processed', 'invalid');
+CREATE TYPE status AS ENUM ('NEW', 'PROCESSING', 'PROCESSED', 'INVALID');
 
 CREATE TABLE IF NOT EXISTS orders (
-    order_number int UNIQUE NOT NULL PRIMARY KEY, 
+    order_number text UNIQUE NOT NULL PRIMARY KEY, 
     user_id uuid NOT NULL ,
-    order_status status NOT NULL DEFAULT 'new',
+    order_status status NOT NULL DEFAULT 'NEW',
     accrual float, 
     uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS withdrawals (
-    order_number int UNIQUE NOT NULL PRIMARY KEY,
+    order_number text UNIQUE NOT NULL PRIMARY KEY,
     user_id uuid NOT NULL,
     sum float NOT NULL,
     processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

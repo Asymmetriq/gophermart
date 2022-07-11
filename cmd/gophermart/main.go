@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/Asymmetriq/gophermart/internal/app/gophermart"
@@ -14,8 +15,14 @@ const driverName = "pgx"
 
 func main() {
 	cfg := config.InitConfig()
-	db := database.ConnectToDatabase(driverName, cfg.GetDatabaseDSN())
+	ctx := context.Background()
+	db := database.ConnectToDatabase(driverName, cfg.GetDatabaseURI())
 
-	service := gophermart.NewGophermart(repository.NewRepository(cfg, db), cfg)
-	http.ListenAndServe(service.Config.GetAddress(), service)
+	service := gophermart.NewGophermart(
+		ctx,
+		repository.NewRepository(cfg, db),
+		cfg,
+		config.NewAccrualClient(cfg.GetAccrualAddress()))
+
+	http.ListenAndServe(service.Config.GetRunAddress(), service)
 }

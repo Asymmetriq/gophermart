@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/Asymmetriq/gophermart/internal/pkg/auth"
 	"github.com/Asymmetriq/gophermart/internal/pkg/model"
@@ -13,7 +14,7 @@ type ContextKey string
 
 const (
 	UserStructKey ContextKey = "userStruct"
-	UserIdKey     ContextKey = "userID"
+	UserIDKey     ContextKey = "userID"
 )
 
 // UserValidation validates the user in the request
@@ -46,14 +47,20 @@ func TokenValidation(secret string) func(next http.Handler) http.Handler {
 				http.Error(w, "no auth token", http.StatusUnauthorized)
 				return
 			}
+			splitted := strings.Split(token, "Bearer")
+			if len(splitted) != 2 {
+				http.Error(w, "wrong token format", http.StatusUnauthorized)
+				return
+			}
 			// validate the token
+			token = strings.TrimSpace(splitted[1])
 			userID, err := auth.ValidateToken(token, secret)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), UserIdKey, userID)
+			ctx := context.WithValue(r.Context(), UserIDKey, userID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
