@@ -1,4 +1,4 @@
-package gophermart
+package luhn
 
 import "strconv"
 

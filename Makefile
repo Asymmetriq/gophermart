@@ -7,7 +7,7 @@ t:
 	go test ./...
 
 mocks:
-	mockgen -source=internal/pkg/repository/repository.go Repository > internal/pkg/test/mocks/repository_mock.go
+	mockgen -source=internal/pkg/repository/gophermart.go Repository > internal/pkg/test/mocks/repository_mock.go
 
 db-create:
 	psql -U postgres -c "drop database if exists $(DATABASE_NAME)"

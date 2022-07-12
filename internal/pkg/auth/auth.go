@@ -9,11 +9,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UserClaims struct {
-	UserID string `json:"user_id"`
-	jwt.StandardClaims
-}
-
 func GenerateToken(user models.User, secret string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,

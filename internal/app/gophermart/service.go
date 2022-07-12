@@ -5,12 +5,13 @@ import (
 
 	martMiddleware "github.com/Asymmetriq/gophermart/internal/app/gophermart/middleware"
 	"github.com/Asymmetriq/gophermart/internal/config"
+	"github.com/Asymmetriq/gophermart/internal/pkg/accrual"
 	repo "github.com/Asymmetriq/gophermart/internal/pkg/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func NewGophermart(ctx context.Context, repo repo.Repository, cfg config.Config, client config.AccrualClient) *Service {
+func NewGophermart(ctx context.Context, cfg config.Config, repo repo.Repository, client accrual.Client) *Service {
 	s := &Service{
 		Mux:           chi.NewMux(),
 		Storage:       repo,
@@ -37,7 +38,6 @@ func NewGophermart(ctx context.Context, repo repo.Repository, cfg config.Config,
 						r.Post("/", s.processOrderHandler)
 						r.Get("/", s.getOrdersHandler)
 					})
-
 					// Balance
 					r.Get("/withdrawals", s.getWithdrawalsHandler)
 					r.Route("/balance", func(r chi.Router) {
@@ -56,9 +56,7 @@ func NewGophermart(ctx context.Context, repo repo.Repository, cfg config.Config,
 			})
 		})
 	})
-
 	s.updateOrdersBackground(ctx)
-
 	return s
 }
 
@@ -66,5 +64,5 @@ type Service struct {
 	*chi.Mux
 	Storage       repo.Repository
 	Config        config.Config
-	AccrualClient config.AccrualClient
+	AccrualClient accrual.Client
 }

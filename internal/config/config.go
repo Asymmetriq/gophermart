@@ -11,14 +11,14 @@ func init() {
 	flag.StringVar(&_runAddress, "a", ":8080", "Server's host address")
 	flag.StringVar(&_accrualAddress, "r", "", "External accrual address")
 	flag.StringVar(&_databaseURI, "d", "", "Database URI")
+	flag.StringVar(&_tokenSignKey, "k", "459116d7-fb7d-4789-8c2b-8f31dccb07cf", "Token sign key")
 }
-
-const testTokenSignKey = "459116d7-fb7d-4789-8c2b-8f31dccb07cf"
 
 var (
 	_runAddress     string
 	_accrualAddress string
 	_databaseURI    string
+	_tokenSignKey   string
 )
 
 type Config interface {
@@ -32,7 +32,7 @@ type config struct {
 	RunAddress           string `env:"RUN_ADDRESS"`
 	AccrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
 	DatabaseURI          string `env:"DATABASE_URI"`
-	TokenSignKey         string `env:"-"`
+	TokenSignKey         string `env:"TOKEN_SIGN_KEY" envDefault:"459116d7-fb7d-4789-8c2b-8f31dccb07cf"`
 }
 
 func InitConfig() Config {
@@ -71,5 +71,7 @@ func (c *config) initWithFlags() {
 	if len(c.DatabaseURI) == 0 {
 		c.DatabaseURI = _databaseURI
 	}
-	c.TokenSignKey = testTokenSignKey
+	if len(c.TokenSignKey) == 0 {
+		c.DatabaseURI = _tokenSignKey
+	}
 }

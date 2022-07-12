@@ -11,11 +11,6 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const (
-	MaxReqNum = 5
-	BatchSize = 20
-)
-
 type Repository interface {
 	// Auth
 	SaveUser(ctx context.Context, user model.User) error
@@ -39,8 +34,6 @@ type Repository interface {
 
 	// Transaction wrapper
 	DoInTransaction(ctx context.Context, f func(ctx context.Context, tx *sqlx.Tx) error) (err error)
-
-	GetAll(ctx context.Context, tx *sqlx.Tx) ([]model.Balance, error)
 }
 
 func NewRepository(cfg config.Config, db *sqlx.DB) Repository {
@@ -51,16 +44,6 @@ func NewRepository(cfg config.Config, db *sqlx.DB) Repository {
 
 type martRepository struct {
 	DB *sqlx.DB
-}
-
-func (r *martRepository) GetAll(ctx context.Context, tx *sqlx.Tx) ([]model.Balance, error) {
-	temp := `SELECT * from balances`
-	var balances []model.Balance
-	err := tx.SelectContext(ctx, &balances, temp)
-	if err != nil {
-		return nil, err
-	}
-	return balances, nil
 }
 
 func (r *martRepository) SaveUser(ctx context.Context, user model.User) error {
@@ -91,8 +74,7 @@ func (r *martRepository) GetUser(ctx context.Context, user model.User) (model.Us
 func (r *martRepository) SaveOrder(ctx context.Context, newOrder model.Order, tx *sqlx.Tx) error {
 	selectStatement := `SELECT * FROM orders WHERE order_number=$1 LIMIT 1`
 	var order model.Order
-	// TODO
-	err := r.DB.GetContext(ctx, &order, selectStatement, newOrder.Number)
+	err := tx.GetContext(ctx, &order, selectStatement, newOrder.Number)
 	if err == nil {
 		if order.UserID == newOrder.UserID {
 			return model.ErrExistsForThisUser
@@ -131,20 +113,18 @@ func (r *martRepository) GetOrders(ctx context.Context, userID string) ([]model.
 	return orders, nil
 }
 
-func (r *martRepository) GetAllBalance(ctx context.Context, userID string) (model.Balance, error) {
+func (r *martRepository) GetAllBalance(ctx context.Context, userID string) (balance model.Balance, err error) {
 	selectStatement := `SELECT * FROM balances WHERE user_id=$1`
-	var balance model.Balance
 	if err := r.DB.GetContext(ctx, &balance, selectStatement, userID); err != nil {
 		return model.Balance{}, fmt.Errorf("select all balance: %w", err)
 	}
 	return balance, nil
 }
 
-func (r *martRepository) GetCurrentBalance(ctx context.Context, userID string, tx *sqlx.Tx) (float64, error) {
+func (r *martRepository) GetCurrentBalance(ctx context.Context, userID string, tx *sqlx.Tx) (balance float64, err error) {
 	selectStatement := `SELECT current_balance FROM balances WHERE user_id=$1 LIMIT 1`
-	var balance float64
 	if err := tx.GetContext(ctx, &balance, selectStatement, userID); err != nil {
-		return 0, fmt.Errorf("select current balance: %w", err)
+		return balance, fmt.Errorf("select current balance: %w", err)
 	}
 	return balance, nil
 }
@@ -155,9 +135,8 @@ func (r *martRepository) SaveWithdrawal(ctx context.Context, wth model.Withdrawa
 	return err
 }
 
-func (r *martRepository) GetWithdrawals(ctx context.Context, userID string) ([]model.Withdrawal, error) {
+func (r *martRepository) GetWithdrawals(ctx context.Context, userID string) (withdrawals []model.Withdrawal, err error) {
 	selectStatement := `SELECT order_number, sum, processed_at FROM withdrawals WHERE user_id=$1`
-	var withdrawals []model.Withdrawal
 	if err := r.DB.SelectContext(ctx, &withdrawals, selectStatement, userID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, model.ErrNoWithdrawals
@@ -197,126 +176,3 @@ func (r *martRepository) GetUnprocessedOrders(ctx context.Context) ([]model.Orde
 	}
 	return orders, nil
 }
-
-// func (dbr *dbRepository) SetURL(ctx context.Context, entry models.StorageEntry) error {
-// 	stmnt := `
-// 	INSERT INTO urls(id, short_url, original_url, user_id)
-// 	VALUES (:id, :short_url, :original_url, :user_id)
-// 	ON CONFLICT (original_url) DO NOTHING`
-
-// 	res, err := dbr.DB.NamedExecContext(ctx, stmnt, &entry)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if n, e := res.RowsAffected(); e == nil && n == 0 {
-// 		return models.ErrAlreadyExists
-// 	}
-// 	return err
-// }
-
-// func (dbr *dbRepository) SetBatchURLs(ctx context.Context, entries []models.StorageEntry) error {
-// 	if len(entries) == 0 {
-// 		return nil
-// 	}
-// 	stmnt := `
-// 	INSERT INTO urls(id, short_url, original_url, user_id)
-// 	VALUES (:id, :short_url, :original_url, :user_id)
-// 	ON CONFLICT (id) DO NOTHING`
-
-// 	res, err := dbr.DB.NamedExecContext(ctx, stmnt, entries)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if n, e := res.RowsAffected(); e == nil && n == 0 {
-// 		return models.ErrAlreadyExists
-// 	}
-// 	return err
-// }
-
-// func (dbr *dbRepository) GetURL(ctx context.Context, id string) (string, error) {
-// 	var row models.StorageEntry
-// 	if err := dbr.DB.GetContext(ctx, &row, "SELECT original_url, deleted FROM urls WHERE id=$1", id); err != nil {
-// 		return "", fmt.Errorf("no original url found with shortcut %q", id)
-// 	}
-// 	if row.Deleted {
-// 		return "", models.ErrDeleted
-// 	}
-// 	return row.OriginalURL, nil
-// }
-
-// func (dbr *dbRepository) GetAllURLs(ctx context.Context, userID string) ([]models.StorageEntry, error) {
-// 	stmnt := "SELECT original_url, short_url FROM urls WHERE user_id=$1 AND deleted=false"
-
-// 	var rows []models.StorageEntry
-// 	if err := dbr.DB.SelectContext(ctx, &rows, stmnt, userID); err != nil {
-// 		return nil, fmt.Errorf("no data  found with userID %q", userID)
-// 	}
-// 	return rows, nil
-// }
-
-// func (dbr *dbRepository) BatchDelete(req models.DeleteRequest) {
-// 	go func(delReq models.DeleteRequest) {
-// 		dbr.batchChannel <- delReq
-// 	}(req)
-// 	dbr.Signal()
-// 	dbr.once.Do(func() {
-// 		dbr.backgroundDelete()
-// 	})
-// }
-
-// func (dbr *dbRepository) PingContext(ctx context.Context) error {
-// 	return dbr.DB.PingContext(ctx)
-// }
-
-// func (dbr *dbRepository) deleteBatch(userID string, IDs []string) {
-// 	stmnt := "UPDATE urls SET deleted=true WHERE user_id=$1 AND id=any($2);"
-
-// 	for i := 0; i < len(IDs); i += BatchSize {
-// 		end := i + BatchSize
-// 		if end > len(IDs) {
-// 			end = len(IDs)
-// 		}
-// 		_, err := dbr.DB.Exec(stmnt, userID, IDs[i:end])
-// 		if err != nil {
-// 			log.Printf("async delete: %v", err)
-// 		}
-// 	}
-// }
-
-// func (dbr *dbRepository) backgroundDelete() {
-// 	go func() {
-// 		defer func() {
-// 			if p := recover(); p != nil {
-// 				log.Printf("recovered from %v", p)
-// 			}
-// 		}()
-
-// 		for {
-// 			select {
-// 			case <-dbr.signalTimer.C:
-// 				for userID, IDs := range dbr.groupedRequests {
-// 					dbr.deleteBatch(userID, IDs)
-// 				}
-// 				dbr.groupedRequests = make(map[string][]string)
-// 				dbr.isTimerRunning = false
-
-// 			case req, ok := <-dbr.batchChannel:
-// 				if !ok {
-// 					return
-// 				}
-// 				dbr.groupRequests(req)
-// 			}
-// 		}
-// 	}()
-// }
-// func (dbr *dbRepository) groupRequests(req models.DeleteRequest) {
-// 	if _, ok := dbr.groupedRequests[req.UserID]; ok {
-// 		dbr.groupedRequests[req.UserID] = append(dbr.groupedRequests[req.UserID], req.IDs...)
-// 	}
-// 	dbr.groupedRequests[req.UserID] = req.IDs
-// }
-
-// func (dbr *dbRepository) Close() error {
-// 	close(dbr.batchChannel)
-// 	return dbr.DB.Close()
-// }

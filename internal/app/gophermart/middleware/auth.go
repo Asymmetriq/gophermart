@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -13,8 +14,8 @@ import (
 type ContextKey string
 
 const (
-	UserStructKey ContextKey = "userStruct"
-	UserIDKey     ContextKey = "userID"
+	userStructKey ContextKey = "userStruct"
+	userIDKey     ContextKey = "userID"
 )
 
 // UserValidation validates the user in the request
@@ -33,7 +34,7 @@ func UserValidation(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), UserStructKey, user)
+		ctx := context.WithValue(r.Context(), userStructKey, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -60,8 +61,24 @@ func TokenValidation(secret string) func(next http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), UserIDKey, userID)
+			ctx := context.WithValue(r.Context(), userIDKey, userID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func GetUser(ctx context.Context) (model.User, error) {
+	user, ok := ctx.Value(userStructKey).(model.User)
+	if !ok {
+		return model.User{}, errors.New("no user data provided")
+	}
+	return user, nil
+}
+
+func GetUserID(ctx context.Context) (string, error) {
+	userID, ok := ctx.Value(userIDKey).(string)
+	if !ok {
+		return "", errors.New("no user id in token foun")
+	}
+	return userID, nil
 }

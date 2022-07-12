@@ -2,12 +2,10 @@ package gophermart
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/Asymmetriq/gophermart/internal/pkg/model"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -39,34 +37,19 @@ func (s *Service) updateOrdersBackground(ctx context.Context) {
 
 func (s *Service) updateOrders(ctx context.Context) {
 	orders, err := s.Storage.GetUnprocessedOrders(ctx)
-	if err != nil {
-		log.Printf("updateOrders: %v", err)
-		return
-	}
-	if len(orders) == 0 {
+	if err != nil || len(orders) == 0 {
 		return
 	}
 
-	newOrders := make([]model.Order, 0, len(orders))
-	for _, order := range orders {
-		resp, err := s.AccrualClient.GetOrderInfo(order.Number)
+	for i := range orders {
+		orders[i], err = s.AccrualClient.GetOrderInfo(orders[i])
 		if err != nil {
 			log.Printf("accrual order info: %v", err)
 			return
 		}
-		defer resp.Body.Close()
-
-		var newInfo model.Order
-		if err := json.NewDecoder(resp.Body).Decode(&newInfo); err != nil {
-			log.Printf("accrual order info: %v", err)
-			return
-		}
-
-		newInfo.UserID = order.UserID
-		newOrders = append(newOrders, newInfo)
 	}
 	if err = s.Storage.DoInTransaction(ctx, func(ctx context.Context, tx *sqlx.Tx) error {
-		for _, order := range newOrders {
+		for _, order := range orders {
 			if err := s.Storage.UpdateOrder(ctx, order, tx); err != nil {
 				return fmt.Errorf("update order info: %v", err)
 			}

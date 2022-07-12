@@ -6,6 +6,7 @@ import (
 
 	"github.com/Asymmetriq/gophermart/internal/app/gophermart"
 	"github.com/Asymmetriq/gophermart/internal/config"
+	"github.com/Asymmetriq/gophermart/internal/pkg/accrual"
 	"github.com/Asymmetriq/gophermart/internal/pkg/database"
 	"github.com/Asymmetriq/gophermart/internal/pkg/repository"
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -20,9 +21,9 @@ func main() {
 
 	service := gophermart.NewGophermart(
 		ctx,
-		repository.NewRepository(cfg, db),
 		cfg,
-		config.NewAccrualClient(cfg.GetAccrualAddress()))
+		repository.NewRepository(cfg, db),
+		accrual.NewlClient(cfg.GetAccrualAddress()))
 
 	http.ListenAndServe(service.Config.GetRunAddress(), service)
 }
