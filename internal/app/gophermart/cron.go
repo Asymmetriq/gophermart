@@ -37,8 +37,12 @@ func (s *Service) updateOrdersBackground(ctx context.Context) {
 
 func (s *Service) updateOrders(ctx context.Context) {
 	orders, err := s.Storage.GetUnprocessedOrders(ctx)
-	if err != nil || len(orders) == 0 {
+	if err != nil {
+		log.Printf("fetching unprocessed orders: %v", err)
 		return
+	}
+	if len(orders) == 0 {
+		log.Print("no unprocessed orders")
 	}
 
 	for i := range orders {
@@ -47,21 +51,20 @@ func (s *Service) updateOrders(ctx context.Context) {
 			log.Printf("accrual order info: %v", err)
 			return
 		}
-	}
-	if err = s.Storage.DoInTransaction(ctx, func(ctx context.Context, tx *sqlx.Tx) error {
-		for _, order := range orders {
-			if err := s.Storage.UpdateOrder(ctx, order, tx); err != nil {
+		if err = s.Storage.DoInTransaction(ctx, func(ctx context.Context, tx *sqlx.Tx) error {
+			if err := s.Storage.UpdateOrder(ctx, orders[i], tx); err != nil {
 				return fmt.Errorf("update order info: %v", err)
 			}
-			if order.Accrual == nil {
+			if orders[i].Accrual == nil {
 				return nil
 			}
-			if err := s.Storage.UpsertBalance(ctx, order.UserID, order.Accrual, tx); err != nil {
+			if err := s.Storage.UpsertBalance(ctx, orders[i].UserID, orders[i].Accrual, tx); err != nil {
 				return fmt.Errorf("update order info: %v", err)
 			}
+			return nil
+		}); err != nil {
+			log.Printf("background tx: %v", err)
 		}
-		return nil
-	}); err != nil {
-		log.Printf("background tx: %v", err)
 	}
+
 }

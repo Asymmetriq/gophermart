@@ -114,7 +114,7 @@ func (r *martRepository) GetOrders(ctx context.Context, userID string) ([]model.
 }
 
 func (r *martRepository) GetAllBalance(ctx context.Context, userID string) (balance model.Balance, err error) {
-	selectStatement := `SELECT * FROM balances WHERE user_id=$1`
+	selectStatement := `SELECT user_id, current_balance, withdrawn FROM balances WHERE user_id=$1`
 	if err := r.DB.GetContext(ctx, &balance, selectStatement, userID); err != nil {
 		return model.Balance{}, fmt.Errorf("select all balance: %w", err)
 	}
